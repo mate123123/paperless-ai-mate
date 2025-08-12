@@ -12,8 +12,16 @@ class RestrictionPromptService {
    * @returns {string} - Prompt with placeholders replaced
    */
   static processRestrictionsInPrompt(prompt, existingTags, existingCorrespondentList, config) {
-    // Replace placeholders in the original prompt
-    return this._replacePlaceholders(prompt, existingTags, existingCorrespondentList);
+    // Backward compatible: Document Types kommen aus config.documentTypes ODER 4. Argument
+    const existingDocumentTypes =
+      (config && config.documentTypes) ||
+      (Array.isArray(arguments[3]) ? arguments[3] : undefined);
+    return this._replacePlaceholders(
+      prompt,
+      existingTags,
+      existingCorrespondentList,
+      existingDocumentTypes
+    );
   }
 
   /**
@@ -21,9 +29,10 @@ class RestrictionPromptService {
    * @param {string} prompt - The original prompt
    * @param {Array} existingTags - Array of existing tags
    * @param {Array|string} existingCorrespondentList - List of existing correspondents
+   * @param {Array} existingDocumentTypes - Array of existing document types
    * @returns {string} - Prompt with placeholders replaced
    */
-  static _replacePlaceholders(prompt, existingTags, existingCorrespondentList) {
+  static _replacePlaceholders(prompt, existingTags, existingCorrespondentList, existingDocumentTypes) {
     let processedPrompt = prompt;
 
     // Replace %RESTRICTED_TAGS% placeholder
@@ -36,6 +45,12 @@ class RestrictionPromptService {
     if (processedPrompt.includes('%RESTRICTED_CORRESPONDENTS%')) {
       const correspondentsList = this._formatCorrespondentsList(existingCorrespondentList);
       processedPrompt = processedPrompt.replace(/%RESTRICTED_CORRESPONDENTS%/g, correspondentsList);
+    }
+
+    // Replace %RESTRICTED_DOCUMENT_TYPES% placeholder
+    if (processedPrompt.includes('%RESTRICTED_DOCUMENT_TYPES%')) {
+      const docTypesList = this._formatDocumentTypesList(existingDocumentTypes);
+      processedPrompt = processedPrompt.replace(/%RESTRICTED_DOCUMENT_TYPES%/g, docTypesList);
     }
 
     return processedPrompt;
@@ -73,16 +88,31 @@ class RestrictionPromptService {
 
     if (Array.isArray(existingCorrespondentList)) {
       return existingCorrespondentList
-        .filter(Boolean)  // Remove any null/undefined entries
+        .filter(Boolean)
         .map(correspondent => {
           if (typeof correspondent === 'string') return correspondent;
           return correspondent?.name || '';
         })
-        .filter(name => name.length > 0)  // Remove empty strings
+        .filter(name => name.length > 0)
         .join(', ');
     }
 
     return '';
+  }
+
+  /**
+   * Format document types list into a comma-separated string
+   * @param {Array} existingDocumentTypes - Array of {id,name} or strings
+   * @returns {string}
+   */
+  static _formatDocumentTypesList(existingDocumentTypes) {
+    if (!existingDocumentTypes || !Array.isArray(existingDocumentTypes) || existingDocumentTypes.length === 0) {
+      return '';
+    }
+    return existingDocumentTypes
+      .map(dt => (typeof dt === 'string' ? dt : dt?.name))
+      .filter(Boolean)
+      .join(', ');
   }
 }
 
