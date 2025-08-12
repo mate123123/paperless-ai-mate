@@ -5,6 +5,7 @@ class DocumentsService {
   constructor() {
     this.tagCache = new Map();
     this.correspondentCache = new Map();
+    this.documentTypeCache = new Map();
   }
 
   async getTagNames() {
@@ -26,12 +27,22 @@ class DocumentsService {
     }
     return Object.fromEntries(this.correspondentCache);
   }
-
+async getDocumentTypeNames() {
+   if (this.documentTypeCache.size === 0) {
+      const types = await paperlessService.listDocumentTypesNames();
+      types.forEach(t => this.documentTypeCache.set(t.id, t.name));
+    }
+    return Object.fromEntries(this.documentTypeCache);
+  }
   async getDocumentsWithMetadata() {
     const [documents, tagNames, correspondentNames] = await Promise.all([
+      async getDocumentsWithMetadata() {
+      const [documents, tagNames, correspondentNames, documentTypeNames] = await Promise.all([
       paperlessService.getDocuments(),
       this.getTagNames(),
       this.getCorrespondentNames()
+         this.getCorrespondentNames(),
+     this.getDocumentTypeNames()
     ]);
 
     // Sort documents by created date (newest first)
@@ -41,6 +52,7 @@ class DocumentsService {
       documents,
       tagNames,
       correspondentNames,
+      documentTypeNames,
       paperlessUrl: process.env.PAPERLESS_API_URL.replace('/api', '')
     };
   }
